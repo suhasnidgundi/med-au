@@ -1,0 +1,24 @@
+/* app/globals.css */
+
+.scroll-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.scroll-container::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
+}
+
+.nav-pills .nav-link {
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+.nav-pills .nav-link:last-child {
+    margin-right: 0;
+}
