@@ -13,22 +13,22 @@ export default function BottomNavbar() {
         <nav className="bottom-navbar fixed-bottom my-8" style={{ marginBottom: "2vh" }}>
             <hr />
             <div className="d-flex justify-content-around align-items-center">
-                <Link href="/" className="nav-item">
+                <Link href="/dashboard/" className="nav-item">
                     <Home size={30} />
                 </Link>
-                <Link href="/reports" className="nav-item">
+                <Link href="/dashboard/reports" className="nav-item">
                     <BookText size={30} />
 
                 </Link>
-                <Link href="/consultation" className="nav-item main-button">
+                <Link href="/dashboard/consultation" className="nav-item main-button">
                     <HeartHandshake size={60} />
 
                 </Link>
-                <Link href="/nearByHospitals" className="nav-item">
+                <Link href="/dashboard/nearByHospitals" className="nav-item">
                     <Hospital size={30} />  
 
                 </Link>
-                <Link href="/profile" className="nav-item">
+                <Link href="/dashboard/profile" className="nav-item">
                     <CircleUserRound size={30} />
                 </Link>
             </div>

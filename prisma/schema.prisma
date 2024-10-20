@@ -1,0 +1,501 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User/Patient Management
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  username      String?   @unique
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  // Optional for WebAuthn support
+  Authenticator Authenticator[]
+
+  password       String?
+  role           UserRole        @default(PATIENT)
+  profile        UserProfile?
+  consultations  Consultation[]
+  medicalHistory MedicalHistory?
+  symptoms       UserSymptom[]
+  prescriptions  Prescription[]
+  followUps      FollowUp[]
+  appointments   Appointment[]
+  SymptomLog     SymptomLog[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  hasFilledForm Boolean @default(false)
+
+  @@index([email])
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String  @unique
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User?   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Optional for WebAuthn support
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  SPECIALIST
+  ADMIN
+}
+
+model UserProfile {
+  id                           String            @id @default(cuid())
+  userId                       String            @unique
+  user                         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dob                          DateTime
+  gender                       String
+  phone_number                 String
+  blood_group                  String
+  height                       Float
+  weight                       Float
+  location                     String // For accessibility analysis
+  language                     String // For multilingual support
+  emergency_contact            String?
+  preferred_communication_mode CommunicationMode @default(APP)
+  created_at                   DateTime          @default(now())
+  updated_at                   DateTime          @updatedAt
+
+  @@index([userId])
+}
+
+enum CommunicationMode {
+  APP
+  SMS
+  VOICE
+  EMAIL
+  WHATSAPP
+}
+
+// Updated Medical History with separate tables for lists
+model MedicalHistory {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chronic_conditions ChronicCondition[]
+  medications        Medication[]
+  allergies          Allergy[]
+  surgeries          Surgery[]
+  family_history     FamilyHistory[]
+  lifestyle_factors  LifestyleFactor[]
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+
+  @@index([userId])
+}
+
+model ChronicCondition {
+  id               String         @id @default(cuid())
+  medicalHistoryId String
+  medicalHistory   MedicalHistory @relation(fields: [medicalHistoryId], references: [id], onDelete: Cascade)
+  condition        String
+  diagnosed_date   DateTime?
+  status           String // active, managed, resolved
+  notes            String?        @db.Text
+  created_at       DateTime       @default(now())
+
+  @@index([medicalHistoryId])
+}
+
+model Medication {
+  id               String         @id @default(cuid())
+  medicalHistoryId String
+  medicalHistory   MedicalHistory @relation(fields: [medicalHistoryId], references: [id], onDelete: Cascade)
+  name             String
+  dosage           String
+  frequency        String
+  start_date       DateTime
+  end_date         DateTime?
+  status           String // active, discontinued
+  notes            String?        @db.Text
+  created_at       DateTime       @default(now())
+
+  @@index([medicalHistoryId])
+}
+
+model Allergy {
+  id               String         @id @default(cuid())
+  medicalHistoryId String
+  medicalHistory   MedicalHistory @relation(fields: [medicalHistoryId], references: [id], onDelete: Cascade)
+  allergen         String
+  severity         String // mild, moderate, severe
+  reaction         String
+  diagnosed_date   DateTime?
+  notes            String?        @db.Text
+  created_at       DateTime       @default(now())
+
+  @@index([medicalHistoryId])
+}
+
+model Surgery {
+  id               String         @id @default(cuid())
+  medicalHistoryId String
+  medicalHistory   MedicalHistory @relation(fields: [medicalHistoryId], references: [id], onDelete: Cascade)
+  procedure        String
+  date             DateTime
+  hospital         String
+  surgeon          String?
+  complications    String?        @db.Text
+  recovery_notes   String?        @db.Text
+  created_at       DateTime       @default(now())
+
+  @@index([medicalHistoryId])
+}
+
+model FamilyHistory {
+  id               String         @id @default(cuid())
+  medicalHistoryId String
+  medicalHistory   MedicalHistory @relation(fields: [medicalHistoryId], references: [id], onDelete: Cascade)
+  condition        String
+  relationship     String // father, mother, sibling, etc.
+  diagnosed_age    Int?
+  notes            String?        @db.Text
+  created_at       DateTime       @default(now())
+
+  @@index([medicalHistoryId])
+}
+
+model LifestyleFactor {
+  id               String         @id @default(cuid())
+  medicalHistoryId String
+  medicalHistory   MedicalHistory @relation(fields: [medicalHistoryId], references: [id], onDelete: Cascade)
+  factor_type      String // smoking, alcohol, exercise, diet
+  status           String // current, former, never
+  frequency        String? // daily, weekly, occasionally
+  details          String?        @db.Text
+  start_date       DateTime?
+  end_date         DateTime?
+  created_at       DateTime       @default(now())
+
+  @@index([medicalHistoryId])
+}
+
+// Symptom Analysis
+model Symptom {
+  id                 String        @id @default(cuid())
+  name               String        @unique
+  description        String        @db.Text
+  severity_scale     Json // {1: "mild", 2: "moderate", 3: "severe"}
+  related_conditions Json // Array as JSON
+  questions          Json // Follow-up questions as JSON
+  userSymptoms       UserSymptom[]
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+}
+
+model UserSymptom {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptomId        String
+  symptom          Symptom  @relation(fields: [symptomId], references: [id])
+  severity         Int
+  duration         String
+  additional_notes String?  @db.Text
+  created_at       DateTime @default(now())
+
+  @@index([userId])
+  @@index([symptomId])
+}
+
+// Rest of the models remain the same...
+// [Previous Consultation, DoctorReview, Prescription, FollowUp, Appointment models...]
+
+// Example of how to use JSON for array storage in MySQL
+model AITrainingData {
+  id                 String   @id @default(cuid())
+  symptom_pattern    Json // Array as JSON
+  diagnosis          String
+  confidence_score   Float
+  verified_by_doctor Boolean  @default(false)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String // User who performed the action
+  action        String
+  resource_type String
+  resource_id   String
+  details       Json // Additional details as JSON
+  ip_address    String
+  created_at    DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource_type, resource_id])
+}
+
+model Consultation {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptoms           Json // JSON array of symptom IDs and severities
+  initial_complaint  String             @db.Text
+  ai_diagnosis       Json // AI-generated diagnosis with confidence scores
+  doctor_review      DoctorReview?
+  prescriptions      Prescription[]
+  follow_ups         FollowUp[]
+  consultation_notes String?            @db.Text
+  vitals             Json? // Blood pressure, temperature, etc.
+  status             ConsultationStatus
+  consultation_type  ConsultationType
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+
+  @@index([userId])
+}
+
+enum ConsultationStatus {
+  INITIATED
+  IN_PROGRESS
+  WAITING_DOCTOR_REVIEW
+  COMPLETED
+  REFERRED_TO_SPECIALIST
+  CANCELLED
+}
+
+enum ConsultationType {
+  AI_ONLY
+  AI_WITH_DOCTOR_REVIEW
+  EMERGENCY
+  SPECIALIST_REFERRAL
+  FOLLOW_UP
+}
+
+model DoctorReview {
+  id              String       @id @default(cuid())
+  consultationId  String       @unique
+  consultation    Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  doctorId        String // References User with role DOCTOR
+  diagnosis       String       @db.Text
+  recommendations String       @db.Text
+  treatment_plan  String       @db.Text
+  referral_needed Boolean      @default(false)
+  referral_notes  String?      @db.Text
+  doctor_notes    String?      @db.Text
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  @@index([consultationId])
+  @@index([doctorId])
+}
+
+// Prescription System
+model Prescription {
+  id                 String             @id @default(cuid())
+  consultationId     String
+  consultation       Consultation       @relation(fields: [consultationId], references: [id])
+  prescribedById     String // Doctor/AI system that prescribed
+  prescription_items PrescriptionItem[]
+  instructions       String             @db.Text
+  start_date         DateTime
+  end_date           DateTime?
+  status             PrescriptionStatus
+  notes              String?            @db.Text
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  User               User[]
+
+  @@index([consultationId])
+  @@index([prescribedById])
+}
+
+model PrescriptionItem {
+  id                   String       @id @default(cuid())
+  prescriptionId       String
+  prescription         Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication_name      String
+  dosage               String
+  frequency            String
+  duration             String
+  special_instructions String?      @db.Text
+  created_at           DateTime     @default(now())
+
+  @@index([prescriptionId])
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  RENEWED
+}
+
+// Appointment System
+model Appointment {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id])
+  doctorId          String // References User with role DOCTOR
+  consultation_type ConsultationType
+  scheduled_date    DateTime
+  duration          Int // in minutes
+  status            AppointmentStatus
+  reason            String            @db.Text
+  notes             String?           @db.Text
+  reminders_sent    Json // Array of reminder timestamps
+  video_call_link   String? // For virtual appointments
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([doctorId])
+  @@index([scheduled_date])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  NO_SHOW
+}
+
+// Follow-up System
+model FollowUp {
+  id                    String           @id @default(cuid())
+  consultationId        String
+  consultation          Consultation     @relation(fields: [consultationId], references: [id])
+  userId                String
+  user                  User             @relation(fields: [userId], references: [id])
+  scheduled_date        DateTime
+  type                  FollowUpType
+  status                FollowUpStatus
+  priority              FollowUpPriority @default(NORMAL)
+  description           String           @db.Text
+  action_items          Json // Array of required actions
+  completion_notes      String?          @db.Text
+  next_follow_up_needed Boolean          @default(false)
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
+
+  @@index([consultationId])
+  @@index([userId])
+  @@index([scheduled_date])
+}
+
+enum FollowUpType {
+  CONDITION_MONITORING
+  MEDICATION_REVIEW
+  POST_PROCEDURE_CHECK
+  LAB_RESULT_REVIEW
+  CHRONIC_CARE_CHECK
+  WELLNESS_CHECK
+}
+
+enum FollowUpStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  OVERDUE
+}
+
+enum FollowUpPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// Symptom Tracking
+model SymptomLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  symptoms   Json // Array of symptoms with severity
+  timestamp  DateTime
+  notes      String?  @db.Text
+  created_at DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+// AI System Interaction Log
+model AIInteractionLog {
+  id               String   @id @default(cuid())
+  userId           String
+  session_id       String
+  interaction_type String
+  input_data       Json
+  output_data      Json
+  confidence_score Float
+  processing_time  Int // in milliseconds
+  created_at       DateTime @default(now())
+
+  @@index([userId])
+  @@index([session_id])
+}
