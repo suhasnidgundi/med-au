@@ -53,7 +53,7 @@ const SpeechComponents = () => {
     console.log('Sending data:', data);
 
     try {
-      const response = await fetch('http://localhost:3000/api/processConsult', {
+      const response = await fetch('https://med-ai-lilac.vercel.app/api/processConsult', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

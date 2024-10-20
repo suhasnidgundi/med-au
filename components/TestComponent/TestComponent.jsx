@@ -19,7 +19,7 @@ const TestComponent = () => {
         try {
             console.log('Sending request with data:', testData);
             
-            const response = await fetch('http://localhost:3000/api/processConsult', {
+            const response = await fetch('https://med-ai-lilac.vercel.app/api/processConsult', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ const TestComponent = () => {
     // Add a simple test for the test endpoint
     const testConnection = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/test');
+            const response = await fetch('https://med-ai-lilac.vercel.app/api/test');
             const data = await response.json();
             console.log('Test endpoint response:', data);
             alert('Connection successful!');
