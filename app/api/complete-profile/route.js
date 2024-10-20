@@ -1,10 +1,8 @@
 import prisma from '@/libs/PrismaClient';
-import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
 
 // Handle POST requests for profile completion
 export async function POST(req) {
-    const session = await getServerSession({ req });
 
     if (!session) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
